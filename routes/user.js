@@ -1,9 +1,13 @@
 require('dotenv').config()
 const express = require('express')
-const connection = require('../connection')
 const router = express.Router()
 const jwt = require('jsonwebtoken')
 const nodemailer = require('nodemailer')
+
+const connection = require('../connection')
+const auth = require('../services/authentication')
+const checkRole = require('../services/checkRole')
+
 
 
 router.post('/signup', (req, res) => {
@@ -12,7 +16,7 @@ router.post('/signup', (req, res) => {
 	connection.query(query, [user.email], (err, result) => {
 		if (!err) {
 			if (result.length <= 0) {
-				query = "insert into user(name, contactNumber, email, password, status, role) values(?,?,?,?,'false', 'user')"
+				query = 'insert into user(name, contactNumber, email, password, status, role) values(?,?,?,?,"false", "user")'
 				connection.query(query, [user.name, user.contactNumber, user.email, user.password], (err, result) => {
 					if (!err) {
 						return res.status(200).json({ message: 'Successfully registed' })
@@ -64,9 +68,10 @@ const transporter = nodemailer.createTransport({
 	}
 })
 
+
 router.post('/forgotPassword', (req, res) => {
 	const user = req.body
-	let query = "select email, password from user where email=?"
+	let query = 'select email, password from user where email=?'
 	connection.query(query, [user.email], (err, result) => {
 		if (!err) {
 			if (result.length <= 0) {
@@ -89,7 +94,7 @@ router.post('/forgotPassword', (req, res) => {
 				}
 				transporter.sendMail(mailOptions, (err, data) => {
 					if (err) {
-						console.log(err);
+						console.log(err)
 					} else {
 						console.log(`Email sent: ${data.response}`)
 					}
@@ -103,4 +108,63 @@ router.post('/forgotPassword', (req, res) => {
 })
 
 
-module.exports = router;
+router.get('/get', auth.authenticateToken, checkRole.checkRole, (req, res) => {
+	let query = 'select id, name, contactNumber, email, status, role from user where role="user"'
+	connection.query(query, (err, result) => {
+		if (!err)
+			return res.status(200).json(result)
+		return res.status(500).json(err)
+	})
+})
+
+
+router.patch('/update', auth.authenticateToken, checkRole.checkRole, (req, res) => {
+	const user = req.body
+	let query = 'update user set status=? where id=?'
+	connection.query(query, [user.status, user.id], (err, result) => {
+		if (!err) {
+			if (result.affectedRows == 0)
+				return res.status(404).json({ message: 'User id does not exists.' })
+			return res.status(200).json({ message: 'User updated successfully.' })
+		} else {
+			return res.status(500).json(err)
+		}
+	})
+
+})
+
+
+router.get('/checkToken', auth.authenticateToken, checkRole.checkRole, (req, res) => {
+	return res.status(200).json({ message: 'true' })
+})
+
+
+router.post('/changePassword', auth.authenticateToken, (req, res) => {
+	const user = req.body
+	const email = res.locals.email
+	let query = 'select * from user where email=? and password=?'
+	connection.query(query, [email, user.oldPassword], (err, result) => {
+		if (!err) {
+			if (result.length <= 0) {
+				return res.status(400).json({ message: 'Incorrect old password.' })
+			} else if (result[0].password == user.oldPassword) {
+				query = 'update user set password=? where email=?'
+				connection.query(query, [user.newPassword, email], (err, result) => {
+					if (!err) {
+						return res.status(200).json({ message: 'Password updated successfully.' })
+					} else {
+						return res.status(500).json(err)
+					}
+				})
+			} else {
+				return res.status(400).json({ message: 'Something went wrong. Please try again.' })
+			}
+		} else {
+			return res.status(500).json(err)
+		}
+	})
+})
+
+
+
+module.exports = router
