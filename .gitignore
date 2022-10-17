@@ -1,1 +1,3 @@
 /node_modules
+/.DS_Store
+/generated_pdf/.DS_Store
