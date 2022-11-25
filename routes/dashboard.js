@@ -10,7 +10,6 @@ router.get('/details', auth.authenticateToken, (req, res) => {
   connection.query(query, (err, result) => {
     if (!err) {
       categoryCount = result[0].categoryCount
-
     } else {
       return res.status(500).json(err)
     }

@@ -9,6 +9,22 @@ const path = require('path')
 const fs = require('fs')
 
 
+router.patch('/update', auth.authenticateToken, (req, res) => {
+  const orderDetails = req.body
+  const productDetails = JSON.parse(orderDetails.productDetails)
+  let query = 'update bill set name=?, email=?, contactNumber=?, paymentMethod=?, total=?, productDetails=? where id=?'
+  const params = [orderDetails.name, orderDetails.email, orderDetails.contactNumber, orderDetails.paymentMethod, orderDetails.total, orderDetails.productDetails, orderDetails.id]
+  connection.query(query, params, (err, result) => {
+    if (!err) {
+      if (result.affectedRows == 0)
+        return res.status(404).json({ message: 'Bill id was not found.' })
+      return res.status(200).json({ message: 'Bill updated successfully.' })
+    } else {
+      return res.status(500).json(err)
+    }
+  })
+})
+
 
 router.post('/generateReport', auth.authenticateToken, (req, res) => {
   const genUuid = uuid.v1()
@@ -17,7 +33,7 @@ router.post('/generateReport', auth.authenticateToken, (req, res) => {
 
   let query = `insert into bill(name, uuid, email, contactNumber, paymentMethod, total, productDetails, createdBy) values(?,?,?,?,?,?,?,?)`
 
-  const params = [orderDetails.name, genUuid, orderDetails.email, orderDetails.contactNumber, orderDetails.paymentMethod, orderDetails.totalAmount, orderDetails.productDetails, res.locals.email]
+  const params = [orderDetails.name, genUuid, orderDetails.email, orderDetails.contactNumber, orderDetails.paymentMethod, orderDetails.total, orderDetails.productDetails, res.locals.email]
 
   connection.query(query, params, (err, result) => {
     if (!err) {
@@ -32,17 +48,17 @@ router.post('/generateReport', auth.authenticateToken, (req, res) => {
         if (!err) {
           pdf.create(data).toFile(`./generated_pdf/${genUuid}.pdf`, (err, data) => {
             if (!err) {
-              res.status(200).json({ uuid: genUuid })
+              return res.status(200).json({ uuid: genUuid })
             } else {
-              res.status(500).json(err)
+              return res.status(500).json(err)
             }
           })
         } else {
-          res.status(500).json(err)
+          return res.status(500).json(err)
         }
       })
     } else {
-      res.status(500).json(err)
+      return res.status(500).json(err)
     }
   })
 })
@@ -70,11 +86,11 @@ router.post('/getPdf', auth.authenticateToken, (req, res) => {
             res.contentType('application/pdf')
             fs.createReadStream(pdfPath).pipe(res)
           } else {
-            res.status(500).json(err)
+            return res.status(500).json(err)
           }
         })
       } else {
-        res.status(500).json(err)
+        return res.status(500).json(err)
       }
     })
   }
@@ -85,9 +101,9 @@ router.get('/getBills', auth.authenticateToken, (req, res) => {
   let query = 'select * from bill order by id desc'
   connection.query(query, (err, result) => {
     if (!err) {
-      res.status(200).json(result)
+      return res.status(200).json(result)
     } else {
-      res.status(500).json(err)
+      return res.status(500).json(err)
     }
   })
 })
@@ -102,7 +118,7 @@ router.delete('/delete/:id', (req, res) => {
       }
       return res.status(200).json({ message: 'Bill deleted successfully.' })
     } else {
-      res.status(500).json(err)
+      return res.status(500).json(err)
     }
   })
 })
