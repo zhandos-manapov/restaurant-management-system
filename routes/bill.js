@@ -26,7 +26,7 @@ router.patch('/update', auth.authenticateToken, (req, res) => {
 })
 
 
-router.post('/generateReport', auth.authenticateToken, (req, res) => {
+router.post('/add', auth.authenticateToken, (req, res) => {
   const genUuid = uuid.v1()
   const orderDetails = req.body
   const productDetailsReport = JSON.parse(orderDetails.productDetails)
@@ -37,26 +37,28 @@ router.post('/generateReport', auth.authenticateToken, (req, res) => {
 
   connection.query(query, params, (err, result) => {
     if (!err) {
-      ejs.renderFile(path.join(__dirname, '', 'report.ejs'), {
-        productDetails: productDetailsReport,
-        name: orderDetails.name,
-        email: orderDetails.email,
-        contactNumber: orderDetails.contactNumber,
-        paymentMethod: orderDetails.paymentMethod,
-        totalAmount: orderDetails.totalAmount,
-      }, (err, data) => {
-        if (!err) {
-          pdf.create(data).toFile(`./generated_pdf/${genUuid}.pdf`, (err, data) => {
-            if (!err) {
-              return res.status(200).json({ uuid: genUuid })
-            } else {
-              return res.status(500).json(err)
-            }
-          })
-        } else {
-          return res.status(500).json(err)
-        }
-      })
+      // ejs.renderFile(path.join(__dirname, '', 'report.ejs'), {
+      //   productDetails: productDetailsReport,
+      //   name: orderDetails.name,
+      //   email: orderDetails.email,
+      //   contactNumber: orderDetails.contactNumber,
+      //   paymentMethod: orderDetails.paymentMethod,
+      //   totalAmount: orderDetails.totalAmount,
+      // }, (err, data) => {
+      //   if (!err) {
+      //     pdf.create(data).toFile(`./generated_pdf/${genUuid}.pdf`, (err, data) => {
+      //       if (!err) {
+      //         return res.status(200).json({ uuid: genUuid })
+      //       } else {
+      //         return res.status(500).json(err)
+      //       }
+      //     })
+      //   } else {
+      //     return res.status(500).json(err)
+      //   }
+      // })
+
+      return res.status(200).json({ message: 'Bill added successfully.' })
     } else {
       return res.status(500).json(err)
     }
@@ -67,10 +69,10 @@ router.post('/generateReport', auth.authenticateToken, (req, res) => {
 router.post('/getPdf', auth.authenticateToken, (req, res) => {
   const orderDetails = req.body
   const pdfPath = `./generated_pdf/${orderDetails.uuid}.pdf`
-  if (fs.existsSync(pdfPath)) {
-    res.contentType('application/pdf')
-    fs.createReadStream(pdfPath).pipe(res)
-  } else {
+  // if (fs.existsSync(pdfPath)) {
+  //   res.contentType('application/pdf')
+  //   fs.createReadStream(pdfPath).pipe(res)
+  // } else {
     let productDetailsReport = JSON.parse(orderDetails.productDetails)
     ejs.renderFile(path.join(__dirname, '', 'report.ejs'), {
       productDetails: productDetailsReport,
@@ -78,7 +80,7 @@ router.post('/getPdf', auth.authenticateToken, (req, res) => {
       email: orderDetails.email,
       contactNumber: orderDetails.contactNumber,
       paymentMethod: orderDetails.paymentMethod,
-      totalAmount: orderDetails.totalAmount,
+      total: orderDetails.total,
     }, (err, data) => {
       if (!err) {
         pdf.create(data).toFile(`./generated_pdf/${orderDetails.uuid}.pdf`, (err, data) => {
@@ -93,7 +95,7 @@ router.post('/getPdf', auth.authenticateToken, (req, res) => {
         return res.status(500).json(err)
       }
     })
-  }
+  // }
 })
 
 
