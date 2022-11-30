@@ -2,7 +2,7 @@ const express = require('express')
 const connection = require('../connection')
 const router = express.Router()
 const ejs = require('ejs')
-const pdf = require('html-pdf')
+const html_pdf_node = require('html-pdf-node')
 const uuid = require('uuid')
 const auth = require('../services/authentication')
 const path = require('path')
@@ -73,28 +73,39 @@ router.post('/getPdf', auth.authenticateToken, (req, res) => {
   //   res.contentType('application/pdf')
   //   fs.createReadStream(pdfPath).pipe(res)
   // } else {
-    let productDetailsReport = JSON.parse(orderDetails.productDetails)
-    ejs.renderFile(path.join(__dirname, '', 'report.ejs'), {
-      productDetails: productDetailsReport,
-      name: orderDetails.name,
-      email: orderDetails.email,
-      contactNumber: orderDetails.contactNumber,
-      paymentMethod: orderDetails.paymentMethod,
-      total: orderDetails.total,
-    }, (err, data) => {
-      if (!err) {
-        pdf.create(data).toFile(`./generated_pdf/${orderDetails.uuid}.pdf`, (err, data) => {
-          if (!err) {
-            res.contentType('application/pdf')
-            fs.createReadStream(pdfPath).pipe(res)
-          } else {
-            return res.status(500).json(err)
-          }
-        })
-      } else {
-        return res.status(500).json(err)
+  let productDetailsReport = JSON.parse(orderDetails.productDetails)
+  ejs.renderFile(path.join(__dirname, '', 'report.ejs'), {
+    productDetails: productDetailsReport,
+    name: orderDetails.name,
+    email: orderDetails.email,
+    contactNumber: orderDetails.contactNumber,
+    paymentMethod: orderDetails.paymentMethod,
+    total: orderDetails.total,
+  }, (err, data) => {
+    if (!err) {
+      const file = { content: data }
+      const options = {
+        format: 'A5',
+        path: `./generated_pdf/${orderDetails.uuid}.pdf`
       }
-    })
+      html_pdf_node.generatePdf(file, options)
+        .then(
+          (buffer) => {
+            res.status(200).contentType('application/pdf').send(buffer)
+          }
+        )
+      // pdf.create(data).toFile(`./generated_pdf/${orderDetails.uuid}.pdf`, (err, data) => {
+      //   if (!err) {
+      //     res.contentType('application/pdf')
+      //     fs.createReadStream(pdfPath).pipe(res)
+      //   } else {
+      //     return res.status(500).json(err)
+      //   }
+      // })
+    } else {
+      return res.status(500).json(err)
+    }
+  })
   // }
 })
 
